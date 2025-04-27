@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -11,6 +12,30 @@ from utils.report import generate_admin_report, update_day_balance
 from config import ADMIN_PASSWORD
 
 router = Router()
+
+@router.message(Command("clear_db"), lambda msg: models.is_admin(msg.from_user.id))
+async def clear_db(message: Message):
+    """Clear entire database"""
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Да, очистить базу"), KeyboardButton(text="❌ Нет, отмена")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("⚠️ Вы уверены, что хотите полностью очистить базу данных?\nЭто действие нельзя отменить!", reply_markup=keyboard)
+
+@router.message(F.text == "✅ Да, очистить базу", lambda msg: models.is_admin(msg.from_user.id))
+async def confirm_clear_db(message: Message):
+    """Confirm and clear database"""
+    models.clear_database()
+    await message.answer("База данных очищена!")
+    await show_admin_menu(message)
+
+@router.message(F.text == "❌ Нет, отмена", lambda msg: models.is_admin(msg.from_user.id))
+async def cancel_clear_db(message: Message):
+    """Cancel database clearing"""
+    await message.answer("Очистка базы данных отменена.")
+    await show_admin_menu(message)
 
 class AdminAuth(StatesGroup):
     waiting_for_password = State()
