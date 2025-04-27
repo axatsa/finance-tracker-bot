@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
@@ -20,14 +19,14 @@ async def main():
     # Initialize bot and dispatcher
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
-    
+
     # Register handlers
     dp.include_router(admin.router)
     dp.include_router(user.router)
-    
+
     # Initialize database
     models.initialize_db()
-    
+
     # Start polling
     await bot.delete_webhook(drop_pending_updates=True)
     try:
