@@ -120,10 +120,20 @@ async def process_income_description(message: Message, state: FSMContext):
 
 @router.message(F.text == "Наличные Шохруха", lambda msg: models.is_admin(msg.from_user.id))
 async def show_shohruh_cash(message: Message):
-    """Show Shohruh's cash balance in user format"""
-    from datetime import datetime
+    """Show Shohruh's report to admin"""
+    # Get user with non-admin role
+    conn = models.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM users WHERE is_admin = 0 LIMIT 1")
+    user = cursor.fetchone()
+    conn.close()
 
-    user_id = message.from_user.id
+    if not user:
+        await message.answer("Пользователь Шохрух не найден в системе.")
+        return
+
+    report = generate_admin_report()
+    await message.answer(report)
     balance = models.get_cash_balance(user_id)
     transactions = models.get_user_transactions(user_id)
 
@@ -173,13 +183,42 @@ async def finish_day_admin(message: Message):
 @router.message(F.text == "✅ Да, завершить день", lambda msg: models.is_admin(msg.from_user.id))
 async def confirm_finish_day_admin(message: Message):
     """Handle day finish confirmation for admin"""
-    # Generate report
-    report = generate_admin_report()
+    user_id = message.from_user.id
+    
+    # Get admin's transactions and generate their report
+    balance = models.get_cash_balance(user_id)
+    transactions = models.get_user_transactions(user_id)
+
+    total_expense = 0
+    total_income = 0
+    operations = []
+
+    for amount, description, tr_type, _ in transactions:
+        if tr_type == "income":
+            total_income += amount
+            operations.append(f"Приход: {format_sum(amount)} - {description}")
+        else:
+            total_expense += amount
+            operations.append(f"Расход: {format_sum(amount)} - {description}")
+
+    current_date = datetime.now().strftime("%d.%m.%Y")
+    initial_balance = balance + total_expense - total_income
+    current_balance = initial_balance - total_expense + total_income
+
+    report = f"📅 Дата: {current_date}\n\n"
+    report += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
+    report += "📋 Перечень операций:\n"
+    if operations:
+        report += "\n".join(operations) + "\n"
+    else:
+        report += "Нет операций\n"
+    report += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
+    report += f"💵 Текущий остаток: {format_sum(current_balance)}"
 
     # Update previous balance for next day
-    update_day_balance(message.from_user.id)
+    update_day_balance(user_id)
 
-    # Send confirmation and report to admin
+    # Send confirmation and admin's own report
     await message.answer("День завершен ✅")
     await message.answer(report)
     await show_admin_menu(message)
