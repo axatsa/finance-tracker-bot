@@ -7,6 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from db import models
 from utils.format import format_sum
+from config import ADMIN_PASSWORD
 
 router = Router()
 
@@ -29,8 +30,6 @@ async def role_admin(message: Message, state: FSMContext):
 @router.message(AdminAuth.waiting_for_password)
 async def admin_password(message: Message, state: FSMContext):
     """Check admin password"""
-    from config import ADMIN_PASSWORD
-
     if message.text == ADMIN_PASSWORD:
         models.set_user_admin(message.from_user.id)
         await message.answer("Доступ администратора предоставлен. Введите текущую сумму наличных:")
@@ -67,12 +66,6 @@ async def add_expense_admin(message: Message, state: FSMContext):
     await message.answer("Введите сумму расхода:")
     await state.set_state(AdminAction.waiting_for_expense_amount)
 
-@router.message(F.text == "Добавить доход", lambda msg: models.is_admin(msg.from_user.id))
-async def add_income_admin(message: Message, state: FSMContext):
-    """Admin handler for adding income"""
-    await message.answer("Введите сумму дохода:")
-    await state.set_state(AdminAction.waiting_for_income_amount)
-
 @router.message(AdminAction.waiting_for_expense_amount)
 async def process_expense_amount(message: Message, state: FSMContext):
     try:
@@ -95,3 +88,73 @@ async def process_expense_description(message: Message, state: FSMContext):
     await message.answer(f"Расход добавлен: {data['amount']} сум - {message.text}")
     await show_admin_menu(message)
     await state.clear()
+
+@router.message(F.text == "Добавить доход", lambda msg: models.is_admin(msg.from_user.id))
+async def add_income_admin(message: Message, state: FSMContext):
+    """Admin handler for adding income"""
+    await message.answer("Введите сумму дохода:")
+    await state.set_state(AdminAction.waiting_for_income_amount)
+
+@router.message(AdminAction.waiting_for_income_amount)
+async def process_income_amount(message: Message, state: FSMContext):
+    try:
+        amount = float(message.text.replace(',', '.'))
+        await state.update_data(amount=amount)
+        await message.answer("Введите описание дохода:")
+        await state.set_state(AdminAction.waiting_for_income_description)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректную сумму:")
+
+@router.message(AdminAction.waiting_for_income_description)
+async def process_income_description(message: Message, state: FSMContext):
+    data = await state.get_data()
+    models.add_transaction(
+        message.from_user.id,
+        data['amount'],
+        message.text,
+        "income"
+    )
+    await message.answer(f"Доход добавлен: {data['amount']} сум - {message.text}")
+    await show_admin_menu(message)
+    await state.clear()
+
+@router.message(F.text == "Наличные Шохруха", lambda msg: models.is_admin(msg.from_user.id))
+async def show_shohruh_cash(message: Message):
+    """Show Shohruh's cash balance"""
+    balance = models.get_cash_balance(message.from_user.id)
+    transactions = models.get_user_transactions(message.from_user.id)
+    
+    response = f"Данные по наличным Шохруха:\n\nТекущий баланс: {format_sum(balance)}\n\nОперации:"
+    
+    if not transactions:
+        response += "\nНет операций"
+    else:
+        for amount, description, tr_type, date in transactions[:10]:
+            sign = "+" if tr_type == "income" else "-"
+            response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
+    
+    await message.answer(response)
+
+@router.message(F.text == "Итог", lambda msg: models.is_admin(msg.from_user.id))
+async def show_summary_admin(message: Message):
+    """Show summary for admin"""
+    balance = models.get_cash_balance(message.from_user.id)
+    transactions = models.get_user_transactions(message.from_user.id)
+    
+    response = f"Текущий баланс: {format_sum(balance)}\n\nОперации:"
+    
+    if not transactions:
+        response += "\nНет операций"
+    else:
+        for amount, description, tr_type, date in transactions[:10]:
+            sign = "+" if tr_type == "income" else "-"
+            response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
+    
+    await message.answer(response)
+
+@router.message(F.text == "Очистить историю", lambda msg: models.is_admin(msg.from_user.id))
+async def clear_history(message: Message):
+    """Clear transaction history"""
+    models.clear_database()
+    await message.answer("История операций очищена")
+    await show_admin_menu(message)

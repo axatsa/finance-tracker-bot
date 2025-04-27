@@ -6,30 +6,34 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from db import models
-from utils.format import format_sum, format_dual_currency
-from utils.report import update_day_balance, generate_admin_report
+from utils.format import format_sum
 
 router = Router()
 
-class UserAuth(StatesGroup):
-    waiting_for_cash = State()
-    waiting_for_cash_currency = State()
-    waiting_for_exchange_rate = State()
-
 class UserAction(StatesGroup):
     waiting_for_expense_amount = State()
-    waiting_for_expense_currency = State()
     waiting_for_expense_description = State()
     waiting_for_income_amount = State()
-    waiting_for_income_currency = State()
     waiting_for_income_description = State()
+    waiting_for_cash = State()
 
 @router.message(F.text == "Пользователь")
 async def role_user(message: Message, state: FSMContext):
     """Handler for User button"""
     models.add_user(message.from_user.id, username="Shokhrukh", is_admin=0)
     await message.answer("Введите текущую сумму наличных:")
-    await state.set_state(UserAuth.waiting_for_cash)
+    await state.set_state(UserAction.waiting_for_cash)
+
+@router.message(UserAction.waiting_for_cash)
+async def user_cash(message: Message, state: FSMContext):
+    """Set initial cash balance for user"""
+    try:
+        cash_balance = float(message.text.replace(',', '.'))
+        models.set_cash_balance(message.from_user.id, cash_balance)
+        await show_user_menu(message)
+        await state.clear()
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректную сумму:")
 
 async def show_user_menu(message: Message):
     """Show user menu"""
@@ -42,3 +46,90 @@ async def show_user_menu(message: Message):
         resize_keyboard=True
     )
     await message.answer("Меню пользователя:", reply_markup=keyboard)
+
+@router.message(F.text == "Добавить расход")
+async def add_expense_user(message: Message, state: FSMContext):
+    """User handler for adding expense"""
+    await message.answer("Введите сумму расхода:")
+    await state.set_state(UserAction.waiting_for_expense_amount)
+
+@router.message(UserAction.waiting_for_expense_amount)
+async def expense_amount_user(message: Message, state: FSMContext):
+    """Process expense amount for user"""
+    try:
+        amount = float(message.text.replace(',', '.'))
+        await state.update_data(amount=amount)
+        await message.answer("Введите описание расхода:")
+        await state.set_state(UserAction.waiting_for_expense_description)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректную сумму:")
+
+@router.message(UserAction.waiting_for_expense_description)
+async def expense_description_user(message: Message, state: FSMContext):
+    """Process expense description for user"""
+    data = await state.get_data()
+    amount = data.get("amount")
+    description = message.text
+    
+    models.add_transaction(
+        user_id=message.from_user.id,
+        amount=amount,
+        description=description,
+        transaction_type="expense"
+    )
+    
+    await message.answer(f"Расход добавлен: {amount} сум - {description}")
+    await show_user_menu(message)
+    await state.clear()
+
+@router.message(F.text == "Добавить доход")
+async def add_income_user(message: Message, state: FSMContext):
+    """User handler for adding income"""
+    await message.answer("Введите сумму дохода:")
+    await state.set_state(UserAction.waiting_for_income_amount)
+
+@router.message(UserAction.waiting_for_income_amount)
+async def income_amount_user(message: Message, state: FSMContext):
+    """Process income amount for user"""
+    try:
+        amount = float(message.text.replace(',', '.'))
+        await state.update_data(amount=amount)
+        await message.answer("Введите описание дохода:")
+        await state.set_state(UserAction.waiting_for_income_description)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректную сумму:")
+
+@router.message(UserAction.waiting_for_income_description)
+async def income_description_user(message: Message, state: FSMContext):
+    """Process income description for user"""
+    data = await state.get_data()
+    amount = data.get("amount")
+    description = message.text
+    
+    models.add_transaction(
+        user_id=message.from_user.id,
+        amount=amount,
+        description=description,
+        transaction_type="income"
+    )
+    
+    await message.answer(f"Доход добавлен: {amount} сум - {description}")
+    await show_user_menu(message)
+    await state.clear()
+
+@router.message(F.text == "Итог")
+async def show_summary_user(message: Message):
+    """Show summary for user"""
+    transactions = models.get_user_transactions(message.from_user.id)
+    balance = models.get_cash_balance(message.from_user.id)
+
+    response = f"Текущий баланс: {format_sum(balance)}\n\nОперации:"
+    
+    if not transactions:
+        response += "\nНет операций"
+    else:
+        for amount, description, tr_type, date in transactions[:10]:
+            sign = "+" if tr_type == "income" else "-"
+            response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
+
+    await message.answer(response)
