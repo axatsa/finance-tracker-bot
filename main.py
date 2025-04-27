@@ -5,8 +5,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
-from attached_assets.config import BOT_TOKEN
-from attached_assets.handlers import admin, user
+from config import BOT_TOKEN
+from handlers import admin, user, common #Corrected import statement
 from db import models
 
 # Configure logging
@@ -23,6 +23,7 @@ async def main():
     # Register handlers
     dp.include_router(admin.router)
     dp.include_router(user.router)
+    dp.include_router(common.router) # Added common router
 
     # Initialize database
     models.initialize_db()

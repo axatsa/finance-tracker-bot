@@ -60,3 +60,38 @@ async def show_admin_menu(message: Message):
         resize_keyboard=True
     )
     await message.answer("Меню администратора:", reply_markup=keyboard)
+
+@router.message(F.text == "Добавить расход", lambda msg: models.is_admin(msg.from_user.id))
+async def add_expense_admin(message: Message, state: FSMContext):
+    """Admin handler for adding expense"""
+    await message.answer("Введите сумму расхода:")
+    await state.set_state(AdminAction.waiting_for_expense_amount)
+
+@router.message(F.text == "Добавить доход", lambda msg: models.is_admin(msg.from_user.id))
+async def add_income_admin(message: Message, state: FSMContext):
+    """Admin handler for adding income"""
+    await message.answer("Введите сумму дохода:")
+    await state.set_state(AdminAction.waiting_for_income_amount)
+
+@router.message(AdminAction.waiting_for_expense_amount)
+async def process_expense_amount(message: Message, state: FSMContext):
+    try:
+        amount = float(message.text.replace(',', '.'))
+        await state.update_data(amount=amount)
+        await message.answer("Введите описание расхода:")
+        await state.set_state(AdminAction.waiting_for_expense_description)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректную сумму:")
+
+@router.message(AdminAction.waiting_for_expense_description)
+async def process_expense_description(message: Message, state: FSMContext):
+    data = await state.get_data()
+    models.add_transaction(
+        message.from_user.id,
+        data['amount'],
+        message.text,
+        "expense"
+    )
+    await message.answer(f"Расход добавлен: {data['amount']} сум - {message.text}")
+    await show_admin_menu(message)
+    await state.clear()
