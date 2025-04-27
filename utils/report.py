@@ -48,7 +48,7 @@ def generate_admin_report():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT amount, description, transaction_type FROM transactions WHERE user_id = ? AND date(created_at) = date('now')",
+        "SELECT amount, description, transaction_type, datetime(created_at, 'localtime') FROM transactions WHERE user_id = ? AND date(created_at) = date('now')",
         (user_id,)
     )
     today_transactions = cursor.fetchall()
