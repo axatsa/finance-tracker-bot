@@ -157,7 +157,7 @@ def get_user_transactions(user_id: int) -> List[Tuple]:
     cursor = conn.cursor()
     
     cursor.execute(
-        "SELECT amount, description, transaction_type, datetime(created_at, 'localtime') FROM transactions WHERE user_id = ? ORDER BY created_at DESC",
+        "SELECT amount, description, transaction_type, datetime(created_at, 'localtime') FROM transactions WHERE user_id = ? ORDER BY created_at ASC",
         (user_id,)
     )
     transactions = cursor.fetchall()

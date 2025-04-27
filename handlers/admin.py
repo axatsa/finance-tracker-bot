@@ -1,4 +1,3 @@
-
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
@@ -123,31 +122,31 @@ async def show_shohruh_cash(message: Message):
     """Show Shohruh's cash balance"""
     balance = models.get_cash_balance(message.from_user.id)
     transactions = models.get_user_transactions(message.from_user.id)
-    
+
     response = f"Данные по наличным Шохруха:\n\nТекущий баланс: {format_sum(balance)}\n\nОперации:"
-    
+
     if not transactions:
         response += "\nНет операций"
     else:
         for amount, description, tr_type, date in transactions[:10]:
             sign = "+" if tr_type == "income" else "-"
             response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
-    
+
     await message.answer(response)
 
 @router.message(F.text == "Итог", lambda msg: models.is_admin(msg.from_user.id))
 async def show_summary_admin(message: Message):
     """Show summary for admin"""
     from datetime import datetime
-    
+
     user_id = message.from_user.id
     balance = models.get_cash_balance(user_id)
     transactions = models.get_user_transactions(user_id)
-    
+
     total_expense = 0
     total_income = 0
     operations = []
-    
+
     for amount, description, tr_type, _ in transactions:
         if tr_type == "income":
             total_income += amount
@@ -155,11 +154,11 @@ async def show_summary_admin(message: Message):
         else:
             total_expense += amount
             operations.append(f"Расход: {format_sum(amount)} - {description}")
-    
+
     current_date = datetime.now().strftime("%d.%m.%Y")
     initial_balance = balance + total_expense - total_income
     current_balance = initial_balance - total_expense + total_income
-    
+
     response = f"📅 Дата: {current_date}\n\n"
     response += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
     response += "📋 Перечень операций:\n"
@@ -169,7 +168,7 @@ async def show_summary_admin(message: Message):
         response += "Нет операций\n"
     response += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
     response += f"💵 Текущий остаток: {format_sum(current_balance)}"
-    
+
     await message.answer(response)
 
 @router.message(F.text == "Очистить историю", lambda msg: models.is_admin(msg.from_user.id))
