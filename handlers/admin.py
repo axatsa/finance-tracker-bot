@@ -119,20 +119,74 @@ async def process_income_description(message: Message, state: FSMContext):
 
 @router.message(F.text == "Наличные Шохруха", lambda msg: models.is_admin(msg.from_user.id))
 async def show_shohruh_cash(message: Message):
-    """Show Shohruh's cash balance"""
-    balance = models.get_cash_balance(message.from_user.id)
-    transactions = models.get_user_transactions(message.from_user.id)
+    """Show Shohruh's cash balance in user format"""
+    from datetime import datetime
 
-    response = f"Данные по наличным Шохруха:\n\nТекущий баланс: {format_sum(balance)}\n\nОперации:"
+    user_id = message.from_user.id
+    balance = models.get_cash_balance(user_id)
+    transactions = models.get_user_transactions(user_id)
 
-    if not transactions:
-        response += "\nНет операций"
+    total_expense = 0
+    total_income = 0
+    operations = []
+
+    for amount, description, tr_type, _ in transactions:
+        if tr_type == "income":
+            total_income += amount
+            operations.append(f"Приход: {format_sum(amount)} - {description}")
+        else:
+            total_expense += amount
+            operations.append(f"Расход: {format_sum(amount)} - {description}")
+
+    current_date = datetime.now().strftime("%d.%m.%Y")
+    initial_balance = balance + total_expense - total_income
+    current_balance = initial_balance - total_expense + total_income
+
+    response = f"📅 Дата: {current_date}\n\n"
+    response += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
+    response += "📋 Перечень операций:\n"
+    if operations:
+        response += "\n".join(operations) + "\n"
     else:
-        for amount, description, tr_type, date in transactions[:10]:
-            sign = "+" if tr_type == "income" else "-"
-            response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
+        response += "Нет операций\n"
+    response += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
+    response += f"💵 Текущий остаток: {format_sum(current_balance)}"
 
     await message.answer(response)
+
+@router.message(F.text == "Завершить день", lambda msg: models.is_admin(msg.from_user.id))
+async def finish_day_admin(message: Message):
+    """Show confirmation buttons for finishing the day"""
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Да, завершить день"), KeyboardButton(text="❌ Нет, продолжить работу")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(
+        "Вы уверены, что хотите завершить день?\n"
+        "Напоминаем, что в 20:50 вам придет уведомление о необходимости сдать отчет.",
+        reply_markup=keyboard
+    )
+
+@router.message(F.text == "✅ Да, завершить день", lambda msg: models.is_admin(msg.from_user.id))
+async def confirm_finish_day_admin(message: Message):
+    """Handle day finish confirmation for admin"""
+    # Generate report
+    report = generate_admin_report()
+    
+    # Update previous balance for next day
+    update_day_balance(message.from_user.id)
+    
+    # Send confirmation and report to admin
+    await message.answer("День завершен ✅")
+    await message.answer(report)
+    await show_admin_menu(message)
+
+@router.message(F.text == "❌ Нет, продолжить работу", lambda msg: models.is_admin(msg.from_user.id))
+async def cancel_finish_day_admin(message: Message):
+    """Handle day finish cancellation for admin"""
+    await show_admin_menu(message)
 
 @router.message(F.text == "Итог", lambda msg: models.is_admin(msg.from_user.id))
 async def show_summary_admin(message: Message):
