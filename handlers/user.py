@@ -6,7 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from db import models
 from utils.format import format_sum
-from utils.report import generate_admin_report, update_day_balance # Added import for new functions
+from utils.report import generate_admin_report, update_day_balance
 
 router = Router()
 
@@ -121,15 +121,15 @@ async def income_description_user(message: Message, state: FSMContext):
 async def show_summary_user(message: Message):
     """Show summary for user"""
     from datetime import datetime
-    
+
     user_id = message.from_user.id
     balance = models.get_cash_balance(user_id)
     transactions = models.get_user_transactions(user_id)
-    
+
     total_expense = 0
     total_income = 0
     operations = []
-    
+
     for amount, description, tr_type, _ in transactions:
         if tr_type == "income":
             total_income += amount
@@ -137,11 +137,11 @@ async def show_summary_user(message: Message):
         else:
             total_expense += amount
             operations.append(f"Расход: {format_sum(amount)} - {description}")
-    
+
     current_date = datetime.now().strftime("%d.%m.%Y")
     initial_balance = balance + total_expense - total_income
     current_balance = initial_balance - total_expense + total_income
-    
+
     response = f"📅 Дата: {current_date}\n\n"
     response += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
     response += "📋 Перечень операций:\n"
@@ -151,29 +151,47 @@ async def show_summary_user(message: Message):
         response += "Нет операций\n"
     response += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
     response += f"💵 Текущий остаток: {format_sum(current_balance)}"
-    
+
     await message.answer(response)
 
 @router.message(F.text == "Завершить день", lambda msg: not models.is_admin(msg.from_user.id))
 async def finish_day_user(message: Message):
-    """Finish the day - update previous balance and send report to admin"""
-    from utils.report import generate_admin_report, update_day_balance
+    """Show confirmation buttons for finishing the day"""
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Да, завершить день"), KeyboardButton(text="❌ Нет, продолжить работу")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(
+        "Вы уверены, что хотите завершить день?\n"
+        "Напоминаем, что в 20:50 вам придет уведомление о необходимости сдать отчет.",
+        reply_markup=keyboard
+    )
 
+@router.message(F.text == "✅ Да, завершить день")
+async def confirm_finish_day(message: Message):
+    """Handle day finish confirmation"""
     # Get admin user
     admin_id = models.get_admin_id()
     if not admin_id:
         await message.answer("Ошибка: администратор не найден в системе.")
         return
 
-    # Generate and send report to admin
+    # Generate report
     report = generate_admin_report()
 
     # Update previous balance for next day
     update_day_balance(message.from_user.id)
 
-    # Send report
-    await message.answer("День завершен ✅\nОтчет отправлен администратору.")
+    # Send confirmation to user
+    await message.answer("День завершен ✅\nОтчет отправлен администратору.", reply_markup=show_user_menu(message).reply_markup)
 
     # Send report to admin
     bot = message.bot
     await bot.send_message(admin_id, f"📊 Ежедневный отчет:\n\n{report}")
+
+@router.message(F.text == "❌ Нет, продолжить работу")
+async def cancel_finish_day(message: Message):
+    """Handle day finish cancellation"""
+    await show_user_menu(message)

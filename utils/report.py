@@ -65,7 +65,7 @@ def generate_admin_report():
     # Generate report
     current_date = datetime.now().strftime("%d.%m.%Y")
     report = f"📊 Отчет за {current_date}\n\n"
-    report += f"💰 Первоначальный баланс: {format_sum(previous_balance)}\n\n"
+    report += f"💰 Баланс: {format_sum(previous_balance)}\n\n"
 
     if today_transactions:
         report += "🧾 Операции за сегодня:\n"
