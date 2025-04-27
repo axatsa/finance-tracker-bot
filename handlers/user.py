@@ -1,4 +1,3 @@
-
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
@@ -7,6 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from db import models
 from utils.format import format_sum
+from utils.report import generate_admin_report, update_day_balance # Added import for new functions
 
 router = Router()
 
@@ -70,14 +70,14 @@ async def expense_description_user(message: Message, state: FSMContext):
     data = await state.get_data()
     amount = data.get("amount")
     description = message.text
-    
+
     models.add_transaction(
         user_id=message.from_user.id,
         amount=amount,
         description=description,
         transaction_type="expense"
     )
-    
+
     await message.answer(f"Расход добавлен: {amount} сум - {description}")
     await show_user_menu(message)
     await state.clear()
@@ -105,14 +105,14 @@ async def income_description_user(message: Message, state: FSMContext):
     data = await state.get_data()
     amount = data.get("amount")
     description = message.text
-    
+
     models.add_transaction(
         user_id=message.from_user.id,
         amount=amount,
         description=description,
         transaction_type="income"
     )
-    
+
     await message.answer(f"Доход добавлен: {amount} сум - {description}")
     await show_user_menu(message)
     await state.clear()
@@ -124,7 +124,7 @@ async def show_summary_user(message: Message):
     balance = models.get_cash_balance(message.from_user.id)
 
     response = f"Текущий баланс: {format_sum(balance)}\n\nОперации:"
-    
+
     if not transactions:
         response += "\nНет операций"
     else:
@@ -133,3 +133,27 @@ async def show_summary_user(message: Message):
             response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
 
     await message.answer(response)
+
+@router.message(F.text == "Завершить день", lambda msg: not models.is_admin(msg.from_user.id))
+async def finish_day_user(message: Message):
+    """Finish the day - update previous balance and send report to admin"""
+    from utils.report import generate_admin_report, update_day_balance
+
+    # Get admin user
+    admin_id = models.get_admin_id()
+    if not admin_id:
+        await message.answer("Ошибка: администратор не найден в системе.")
+        return
+
+    # Generate and send report to admin
+    report = generate_admin_report()
+
+    # Update previous balance for next day
+    update_day_balance(message.from_user.id)
+
+    # Send report
+    await message.answer("День завершен ✅\nОтчет отправлен администратору.")
+
+    # Send report to admin
+    bot = message.bot
+    await bot.send_message(admin_id, f"📊 Ежедневный отчет:\n\n{report}")

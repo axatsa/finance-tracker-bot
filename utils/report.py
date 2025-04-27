@@ -30,6 +30,8 @@ def update_day_balance(user_id):
 
 def generate_admin_report():
     """Generate a financial report for the admin"""
+    from datetime import datetime
+    
     # Get user with non-admin role
     conn = get_connection()
     cursor = conn.cursor()
@@ -46,9 +48,7 @@ def generate_admin_report():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT amount, description, transaction_type, datetime(created_at, 'localtime') " +
-        "FROM transactions WHERE user_id = ? AND date(created_at) = date('now') " +
-        "ORDER BY created_at DESC",
+        "SELECT amount, description, transaction_type FROM transactions WHERE user_id = ? AND date(created_at) = date('now')",
         (user_id,)
     )
     today_transactions = cursor.fetchall()
@@ -64,20 +64,21 @@ def generate_admin_report():
             total_expense += amount
     
     # Generate report
-    report = f"📊 Финансовый отчет {username}\n\n"
-    report += f"💰 Начальный баланс: {format_sum(previous_balance)}\n"
-    report += f"➕ Доходы за сегодня: {format_sum(total_income)}\n"
-    report += f"➖ Расходы за сегодня: {format_sum(total_expense)}\n"
-    report += f"💵 Текущий баланс: {format_sum(balance)}\n\n"
+    current_date = datetime.now().strftime("%d.%m.%Y")
+    report = f"📊 Отчет за {current_date}\n\n"
+    report += f"💰 Первоначальный баланс: {format_sum(previous_balance)}\n\n"
     
     if today_transactions:
         report += "🧾 Операции за сегодня:\n"
-        for amount, description, tr_type, date in today_transactions:
+        for amount, description, tr_type in today_transactions:
             sign = "➕" if tr_type == "income" else "➖"
-            time = date.split(" ")[1][:5] if " " in date else "00:00"
-            report += f"{time} {sign} {format_sum(amount)} - {description}\n"
+            report += f"{sign} {format_sum(amount)} - {description}\n"
     else:
-        report += "Нет операций за сегодня."
+        report += "Нет операций за сегодня.\n"
+    
+    report += f"\n💵 Общий расход: {format_sum(total_expense)}"
+    report += f"\n💵 Общий доход: {format_sum(total_income)}"
+    report += f"\n💵 Текущий остаток: {format_sum(previous_balance - total_expense + total_income)}"
     
     return report
 
