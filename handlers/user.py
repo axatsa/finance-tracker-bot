@@ -120,18 +120,38 @@ async def income_description_user(message: Message, state: FSMContext):
 @router.message(F.text == "Итог")
 async def show_summary_user(message: Message):
     """Show summary for user"""
-    transactions = models.get_user_transactions(message.from_user.id)
-    balance = models.get_cash_balance(message.from_user.id)
-
-    response = f"Текущий баланс: {format_sum(balance)}\n\nОперации:"
-
-    if not transactions:
-        response += "\nНет операций"
+    from datetime import datetime
+    
+    user_id = message.from_user.id
+    balance = models.get_cash_balance(user_id)
+    transactions = models.get_user_transactions(user_id)
+    
+    total_expense = 0
+    total_income = 0
+    operations = []
+    
+    for amount, description, tr_type, _ in transactions:
+        if tr_type == "income":
+            total_income += amount
+            operations.append(f"➕ {format_sum(amount)} - {description}")
+        else:
+            total_expense += amount
+            operations.append(f"➖ {format_sum(amount)} - {description}")
+    
+    current_date = datetime.now().strftime("%d.%m.%Y")
+    initial_balance = balance + total_expense - total_income
+    current_balance = initial_balance - total_expense + total_income
+    
+    response = f"📅 Дата: {current_date}\n"
+    response += f"💰 Текущий баланс: {format_sum(balance)}\n\n"
+    response += "📋 Перечень операций:\n"
+    if operations:
+        response += "\n".join(operations)
     else:
-        for amount, description, tr_type, date in transactions[:10]:
-            sign = "+" if tr_type == "income" else "-"
-            response += f"\n{date}: {sign}{format_sum(amount)} - {description}"
-
+        response += "Нет операций\n"
+    response += f"\n💸 Общий расход: {format_sum(total_expense)}"
+    response += f"\n💵 Текущий остаток: {format_sum(current_balance)}"
+    
     await message.answer(response)
 
 @router.message(F.text == "Завершить день", lambda msg: not models.is_admin(msg.from_user.id))
