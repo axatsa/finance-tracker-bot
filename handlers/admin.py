@@ -6,6 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from db import models
 from utils.format import format_sum
+from utils.report import generate_admin_report, update_day_balance # Added import
 from config import ADMIN_PASSWORD
 
 router = Router()
@@ -174,10 +175,10 @@ async def confirm_finish_day_admin(message: Message):
     """Handle day finish confirmation for admin"""
     # Generate report
     report = generate_admin_report()
-    
+
     # Update previous balance for next day
     update_day_balance(message.from_user.id)
-    
+
     # Send confirmation and report to admin
     await message.answer("День завершен ✅")
     await message.answer(report)
