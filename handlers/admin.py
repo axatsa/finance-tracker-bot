@@ -4,9 +4,10 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
+from datetime import datetime
 from db import models
 from utils.format import format_sum
-from utils.report import generate_admin_report, update_day_balance # Added import
+from utils.report import generate_admin_report, update_day_balance
 from config import ADMIN_PASSWORD
 
 router = Router()
@@ -132,8 +133,11 @@ async def show_shohruh_cash(message: Message):
         await message.answer("Пользователь Шохрух не найден в системе.")
         return
 
-    report = generate_admin_report()
-    await message.answer(report)
+    if not user:
+        await message.answer("Пользователь Шохрух не найден в системе.")
+        return
+        
+    user_id = user[0]  # Get user_id from query result
     balance = models.get_cash_balance(user_id)
     transactions = models.get_user_transactions(user_id)
 
