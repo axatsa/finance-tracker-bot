@@ -186,3 +186,36 @@ def clear_database() -> None:
     
     conn.commit()
     conn.close()
+
+def get_user(user_id: int) -> tuple:
+    """Get user data by ID"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+    
+    conn.close()
+    return user
+
+def get_all_users() -> list:
+    """Get all user IDs"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT user_id FROM users")
+    users = [row[0] for row in cursor.fetchall()]
+    
+    conn.close()
+    return users
+
+def get_user_summary(user_id: int) -> dict:
+    """Get user summary with balance"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT cash_balance FROM users WHERE user_id = ?", (user_id,))
+    balance = cursor.fetchone()[0] if cursor.fetchone() else 0
+    
+    conn.close()
+    return {'balance': balance}
