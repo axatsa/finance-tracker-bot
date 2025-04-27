@@ -184,8 +184,18 @@ async def confirm_finish_day(message: Message):
     # Update previous balance for next day
     update_day_balance(message.from_user.id)
 
+    # Get user menu keyboard
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Добавить расход"), KeyboardButton(text="Добавить доход")],
+            [KeyboardButton(text="Итог")],
+            [KeyboardButton(text="Завершить день")]
+        ],
+        resize_keyboard=True
+    )
+    
     # Send confirmation to user
-    await message.answer("День завершен ✅\nОтчет отправлен администратору.", reply_markup=show_user_menu(message).reply_markup)
+    await message.answer("День завершен ✅\nОтчет отправлен администратору.", reply_markup=keyboard)
 
     # Send report to admin
     bot = message.bot
