@@ -54,7 +54,7 @@ async def show_admin_menu(message: Message):
         keyboard=[
             [KeyboardButton(text="Добавить расход"), KeyboardButton(text="Добавить доход")],
             [KeyboardButton(text="Наличные Шохруха"), KeyboardButton(text="Итог")],
-            [KeyboardButton(text="Очистить историю")]
+            [KeyboardButton(text="Очистить историю"), KeyboardButton(text="Завершить день")]
         ],
         resize_keyboard=True
     )
@@ -160,15 +160,15 @@ async def show_summary_admin(message: Message):
     initial_balance = balance + total_expense - total_income
     current_balance = initial_balance - total_expense + total_income
     
-    response = f"📅 Дата: {current_date}\n"
+    response = f"📅 Дата: {current_date}\n\n"
     response += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
     response += "📋 Перечень операций:\n"
     if operations:
-        response += "\n".join(operations)
+        response += "\n".join(operations) + "\n"
     else:
         response += "Нет операций\n"
-    response += f"\n💸 Общий расход: {format_sum(total_expense)}"
-    response += f"\n💵 Текущий остаток: {format_sum(current_balance)}"
+    response += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
+    response += f"💵 Текущий остаток: {format_sum(current_balance)}"
     
     await message.answer(response)
 
