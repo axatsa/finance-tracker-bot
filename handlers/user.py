@@ -178,11 +178,17 @@ async def confirm_finish_day(message: Message):
         await message.answer("Ошибка: администратор не найден в системе.")
         return
 
-    # Generate report
+    # Generate report before clearing
     report = generate_admin_report()
-
-    # Update previous balance for next day
-    update_day_balance(message.from_user.id)
+    
+    # Get current balance and update for next day
+    user_id = message.from_user.id
+    balance = models.get_cash_balance(user_id)
+    models.set_cash_balance(user_id, balance)
+    update_day_balance(user_id)
+    
+    # Clear transactions for new day
+    models.clear_user_transactions(user_id)
 
     # Get user menu keyboard
     keyboard = ReplyKeyboardMarkup(

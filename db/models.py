@@ -187,6 +187,16 @@ def clear_database() -> None:
     conn.commit()
     conn.close()
 
+def clear_user_transactions(user_id: int) -> None:
+    """Clear transactions for specific user"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("DELETE FROM transactions WHERE user_id = ?", (user_id,))
+    
+    conn.commit()
+    conn.close()
+
 def get_user(user_id: int) -> tuple:
     """Get user data by ID"""
     conn = get_connection()

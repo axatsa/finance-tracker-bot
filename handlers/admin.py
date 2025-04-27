@@ -219,7 +219,9 @@ async def confirm_finish_day_admin(message: Message):
     report += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
     report += f"💵 Текущий остаток: {format_sum(current_balance)}"
 
-    # Update previous balance for next day
+    # Update balance for next day and clear transactions
+    models.set_cash_balance(user_id, current_balance)
+    models.clear_user_transactions(user_id)
     update_day_balance(user_id)
 
     # Send confirmation and admin's own report
