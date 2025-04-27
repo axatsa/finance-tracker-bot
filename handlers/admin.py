@@ -161,7 +161,7 @@ async def show_summary_admin(message: Message):
     current_balance = initial_balance - total_expense + total_income
     
     response = f"📅 Дата: {current_date}\n"
-    response += f"💰 Текущий баланс: {format_sum(balance)}\n\n"
+    response += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
     response += "📋 Перечень операций:\n"
     if operations:
         response += "\n".join(operations)
