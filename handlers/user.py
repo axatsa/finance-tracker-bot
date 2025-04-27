@@ -133,10 +133,10 @@ async def show_summary_user(message: Message):
     for amount, description, tr_type, _ in transactions:
         if tr_type == "income":
             total_income += amount
-            operations.append(f"➕ {format_sum(amount)} - {description}")
+            operations.append(f"Приход: {format_sum(amount)} - {description}")
         else:
             total_expense += amount
-            operations.append(f"➖ {format_sum(amount)} - {description}")
+            operations.append(f"Расход: {format_sum(amount)} - {description}")
     
     current_date = datetime.now().strftime("%d.%m.%Y")
     initial_balance = balance + total_expense - total_income
