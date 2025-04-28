@@ -230,35 +230,36 @@ async def confirm_finish_day_admin(message: Message):
     total_income = 0
     operations = []
 
-    for amount, description, tr_type, _ in transactions:
+    for amount, description, tr_type, created_at in transactions:
         if tr_type == "income":
             total_income += amount
-            operations.append(f"Приход: {format_sum(amount)} - {description}")
+            operations.append(f"➕ {format_sum(amount)} - {description}")
         else:
             total_expense += amount
-            operations.append(f"Расход: {format_sum(amount)} - {description}")
+            operations.append(f"➖ {format_sum(amount)} - {description}")
 
     current_date = datetime.now().strftime("%d.%m.%Y")
     initial_balance = balance + total_expense - total_income
     current_balance = initial_balance - total_expense + total_income
 
-    report = f"📅 Дата: {current_date}\n\n"
-    report += f"💰 Баланс: {format_sum(initial_balance)}\n\n"
+    report = f"📊 Ваш финансовый отчет за {current_date}\n\n"
+    report += f"💰 Начальный баланс: {format_sum(initial_balance)}\n\n"
     report += "📋 Перечень операций:\n"
     if operations:
         report += "\n".join(operations) + "\n"
     else:
         report += "Нет операций\n"
-    report += f"\n💸 Общий расход: {format_sum(total_expense)}\n\n"
-    report += f"💵 Текущий остаток: {format_sum(current_balance)}"
+    report += f"\n💸 Общий расход: {format_sum(total_expense)}"
+    report += f"\n💵 Общий доход: {format_sum(total_income)}"
+    report += f"\n💰 Текущий остаток: {format_sum(current_balance)}"
 
     # Update balance for next day and clear transactions
     models.set_cash_balance(user_id, current_balance)
     models.clear_user_transactions(user_id)
     update_day_balance(user_id)
 
-    # Send confirmation and admin's own report
-    await message.answer("День завершен ✅")
+    # Send admin report with improved formatting
+    await message.answer("📅 День завершен ✅")
     await message.answer(report)
     await show_admin_menu(message)
 
