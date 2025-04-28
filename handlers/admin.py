@@ -111,7 +111,11 @@ async def process_expense_description(message: Message, state: FSMContext):
         message.text,
         "expense"
     )
-    await message.answer(f"Расход добавлен: {data['amount']} сум - {message.text}")
+    
+    # Get updated balance
+    balance = models.get_cash_balance(message.from_user.id)
+    formatted_amount = format_sum(data['amount'])
+    await message.answer(f"Расход добавлен: {formatted_amount} - {message.text}\nТекущий баланс: {format_sum(balance)}")
     await show_admin_menu(message)
     await state.clear()
 
@@ -140,7 +144,11 @@ async def process_income_description(message: Message, state: FSMContext):
         message.text,
         "income"
     )
-    await message.answer(f"Доход добавлен: {data['amount']} сум - {message.text}")
+    
+    # Get updated balance
+    balance = models.get_cash_balance(message.from_user.id)
+    formatted_amount = format_sum(data['amount'])
+    await message.answer(f"Доход добавлен: {formatted_amount} - {message.text}\nТекущий баланс: {format_sum(balance)}")
     await show_admin_menu(message)
     await state.clear()
 
