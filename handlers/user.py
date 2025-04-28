@@ -104,7 +104,10 @@ async def expense_description_user(message: Message, state: FSMContext):
         transaction_type="expense"
     )
 
-    await message.answer(f"Расход добавлен: {amount} сум - {description}")
+    # Get updated balance
+    balance = models.get_cash_balance(message.from_user.id)
+    formatted_amount = format_sum(amount)
+    await message.answer(f"Расход добавлен: {formatted_amount} - {description}\nТекущий баланс: {format_sum(balance)}")
     await show_user_menu(message)
     await state.clear()
 
@@ -139,7 +142,10 @@ async def income_description_user(message: Message, state: FSMContext):
         transaction_type="income"
     )
 
-    await message.answer(f"Доход добавлен: {amount} сум - {description}")
+    # Get updated balance
+    balance = models.get_cash_balance(message.from_user.id)
+    formatted_amount = format_sum(amount)
+    await message.answer(f"Доход добавлен: {formatted_amount} - {description}\nТекущий баланс: {format_sum(balance)}")
     await show_user_menu(message)
     await state.clear()
 
@@ -206,13 +212,13 @@ async def confirm_finish_day(message: Message):
 
     # Generate report before clearing
     report = generate_admin_report()
-    
+
     # Get current balance and update for next day
     user_id = message.from_user.id
     balance = models.get_cash_balance(user_id)
     models.set_cash_balance(user_id, balance)
     update_day_balance(user_id)
-    
+
     # Clear transactions for new day
     models.clear_user_transactions(user_id)
 
@@ -225,7 +231,7 @@ async def confirm_finish_day(message: Message):
         ],
         resize_keyboard=True
     )
-    
+
     # Send confirmation to user
     await message.answer("День завершен ✅\nОтчет отправлен администратору.", reply_markup=keyboard)
 
