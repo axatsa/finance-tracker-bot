@@ -6,6 +6,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 from db import models
 
+router = Router()
+
 @router.message(Command("clear_db"))
 async def clear_db(message: Message):
     """Clear entire database"""
