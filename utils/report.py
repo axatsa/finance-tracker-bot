@@ -70,8 +70,8 @@ def generate_admin_report():
     if today_transactions:
         report += "🧾 Операции за сегодня:\n"
         for amount, description, tr_type, date in today_transactions:
-            sign = "➕" if tr_type == "income" else "➖"
-            report += f"{sign} {format_sum(amount)} - {description} ({date})\n"
+            operation_type = "Приход:" if tr_type == "income" else "Расход:"
+            report += f"{operation_type} {format_sum(amount)} - {description} ({date})\n"
     else:
         report += "Нет операций за сегодня.\n"
 
