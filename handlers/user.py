@@ -5,6 +5,30 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from db import models
+
+@router.message(Command("clear_db"))
+async def clear_db(message: Message):
+    """Clear entire database"""
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Да, очистить базу"), KeyboardButton(text="❌ Нет, отмена")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("⚠️ Вы уверены, что хотите полностью очистить базу данных?\nЭто действие нельзя отменить!", reply_markup=keyboard)
+
+@router.message(F.text == "✅ Да, очистить базу")
+async def confirm_clear_db(message: Message):
+    """Confirm and clear database"""
+    models.clear_database()
+    await message.answer("База данных очищена!")
+    await show_user_menu(message)
+
+@router.message(F.text == "❌ Нет, отмена")
+async def cancel_clear_db(message: Message):
+    """Cancel database clearing"""
+    await message.answer("Очистка базы данных отменена.")
+    await show_user_menu(message)
 from utils.format import format_sum
 from utils.report import generate_admin_report, update_day_balance
 
